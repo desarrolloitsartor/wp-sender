@@ -1,0 +1,6 @@
+Flask>=2.0
+selenium>=4.0
+pandas>=1.3
+openpyxl>=3.0
+# Werkzeug is usually a Flask dependency, but pinning if specific version needed later
+Werkzeug>=2.0
