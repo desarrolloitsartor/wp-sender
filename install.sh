@@ -4,6 +4,7 @@
 set -e
 
 echo "Starting installation script for WhatsApp Sender..."
+
 APP_DIR="/opt/whatsapp-sender" # Define app directory variable
 VENV_DIR="$APP_DIR/venv"
 
