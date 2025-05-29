@@ -74,12 +74,10 @@ Esta aplicación permite automatizar el envío de mensajes de WhatsApp a múltip
 4.  **Ejecuta el script de instalación:**
     Este script (`install.sh`) se encargará de:
     *   Actualizar los paquetes del sistema.
-
     *   Instalar Python3, pip, `python3-venv`, Firefox (ESR descargado manualmente), XVFB y wget.
     *   Descargar e instalar la última versión de GeckoDriver (el WebDriver para Firefox).
     *   Crear un entorno virtual de Python en `/opt/whatsapp-sender/venv`.
     *   Instalar las dependencias de Python listadas en `requirements.txt` dentro de este entorno virtual.
-
     *   Crear los directorios necesarios para la aplicación (`app`, `uploads`, `sessions`, `logs`) dentro de `/opt/whatsapp-sender/`.
     ```bash
     sudo bash ./install.sh
@@ -104,7 +102,6 @@ Puedes iniciar la aplicación manualmente para pruebas o configurarla como un se
 
 *   **Manualmente (para pruebas):**
     1.  Asegúrate de estar en el directorio `/opt/whatsapp-sender/`.
-
     2.  Para ejecutar manualmente, puedes activar el entorno virtual primero o invocar directamente el intérprete de Python del entorno virtual:
         ```bash
         # Opción 1: Activar el entorno virtual (recomendado para desarrollo o pruebas interactivas)
@@ -114,7 +111,6 @@ Puedes iniciar la aplicación manualmente para pruebas o configurarla como un se
 
         # Opción 2: Invocar directamente el Python del venv (más similar a cómo lo hace systemd)
         sudo xvfb-run -a /opt/whatsapp-sender/venv/bin/python3 app/app.py --host 0.0.0.0 --port 5000
-
         ```
         *   `xvfb-run -a`: Es necesario porque Selenium usa Firefox, y XVFB (X Virtual FrameBuffer) permite ejecutar aplicaciones gráficas sin una pantalla física (headless).
         *   La aplicación estará disponible en la IP del LXC, puerto 5000.
@@ -123,7 +119,6 @@ Puedes iniciar la aplicación manualmente para pruebas o configurarla como un se
 *   **Usando Systemd (para producción y autoarranque):**
     1.  **Copia el archivo de servicio:**
         El archivo `whatsapp-sender.service` (incluido en el repositorio) define cómo systemd debe gestionar la aplicación y ya está configurado para usar el intérprete de Python del entorno virtual.
-
         ```bash
         sudo cp /opt/whatsapp-sender/whatsapp-sender.service /etc/systemd/system/
         ```
