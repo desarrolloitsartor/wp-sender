@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Sender - John Deere Style</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="https://via.placeholder.com/150x50?text=JD+Logo" alt="John Deere Logo">
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Dashboard</a></li>
+                    <li><a href="#">Settings</a></li> <!-- To be implemented -->
+                    <li><a href="{{ url_for('view_logs') }}">Logs</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            <header>
+                <h1>WhatsApp Message Sender</h1>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div id="flash-messages">
+                {% for category, message in messages %}
+                  <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+
+            <section id="status-cards">
+                <div class="card">
+                    <h2>Status</h2>
+                    <p>Idle</p>
+                </div>
+                <div class="card">
+                    <h2>Messages Sent</h2>
+                    <p>0</p>
+                </div>
+            </section>
+
+            <section id="main-functional-area">
+                <h2>Upload Excel File</h2>
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+                  <input type="file" name="file" accept=".xls,.xlsx" required>
+                  <button type="submit">Upload and Preview</button>
+                </form>
+
+                {% if uploaded_filename %}
+                <div id="file-preview-area" style="margin-top: 20px;">
+                    <h3>Preview for: {{ uploaded_filename }}</h3>
+                    {% if excel_preview %}
+                        <p>Showing first {{ excel_preview|length }} contacts of {{ session.get('all_contacts', [])|length }} total:</p>
+                        <table border="1" style="width:100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th>Phone Number</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in excel_preview %}
+                                <tr>
+                                    <td>{{ row.PhoneNumber }}</td>
+                                    <td>{{ row.Message }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <form action="{{ url_for('send_messages_route') }}" method="post" style="margin-top:15px;">
+                            <button type="submit">Start Sending Messages</button>
+                        </form>
+                        <p style="margin-top:10px;"><small>Note: Ensure WhatsApp Web is not actively open in another browser tab/window using the same session profile, as this can interfere with automation.</small></p>
+                    {% else %}
+                        <p>No data to preview or error in file processing. {{ session.get('last_send_status', '') }}</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                    <p>{{ message }} {{ session.get('last_send_status', '') }}</p>
+                {% endif %}
+                <p> {{ session.get('last_send_status', '') }} </p>
+            </section>
+            
+            <footer>
+                <p>&copy; 2023 Your Company - John Deere Style</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

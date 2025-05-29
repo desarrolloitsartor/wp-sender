@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-selfcheck.json
+pip-log.txt
+
+# LXC/Proxmox related (if any become relevant)
+# *.img
+# *.qcow2
+
+# Instance Folders
+.idea/
+.vscode/
+
+# Output Folders
+dist/
+build/
+
+# Packaging
+*.egg-info/
+*.egg
+
+# Logs
+logs/*.log
+!logs/.gitkeep
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Sessions
+sessions/*
+!sessions/.gitkeep
+
+# Secrets (example, actual secrets should not be in repo)
+# secrets.json
+# .env

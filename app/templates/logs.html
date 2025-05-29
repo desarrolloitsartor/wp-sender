@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Logs - John Deere Style</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .log-container {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            white-space: pre-wrap; /* Preserve whitespace and newlines */
+            font-family: monospace;
+            max-height: 70vh;
+            overflow-y: auto;
+            min-height: 200px; /* Ensure it's visible even when empty */
+        }
+        .actions {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="logo">
+                <img src="https://via.placeholder.com/150x50?text=JD+Logo" alt="John Deere Logo">
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Dashboard</a></li>
+                    <li><a href="#">Settings</a></li> <!-- To be implemented -->
+                    <li><a href="{{ url_for('view_logs') }}">Logs</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            <header>
+                <h1>Application Logs</h1>
+            </header>
+            <section>
+                <div class="actions">
+                    <button id="refreshLogs">Refresh Logs</button>
+                    <label for="autoRefresh">Auto-refresh every 5s:</label>
+                    <input type="checkbox" id="autoRefreshLogs">
+                </div>
+                <div id="logContainer" class="log-container">
+                    Loading logs...
+                </div>
+            </section>
+            <footer>
+                <p>&copy; 2023 Your Company - John Deere Style</p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const logContainer = document.getElementById('logContainer');
+        const refreshButton = document.getElementById('refreshLogs');
+        const autoRefreshCheckbox = document.getElementById('autoRefreshLogs');
+        let autoRefreshIntervalId = null;
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch("{{ url_for('get_log_content') }}");
+                if (!response.ok) {
+                    logContainer.textContent = 'Error loading logs: ' + response.statusText;
+                    return;
+                }
+                const logData = await response.text();
+                logContainer.textContent = logData || "Log file is empty or not found.";
+                // Scroll to the bottom of the log container
+                logContainer.scrollTop = logContainer.scrollHeight;
+            } catch (error) {
+                logContainer.textContent = 'Error fetching logs: ' + error;
+            }
+        }
+
+        refreshButton.addEventListener('click', fetchLogs);
+
+        autoRefreshCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                fetchLogs(); // Fetch immediately
+                autoRefreshIntervalId = setInterval(fetchLogs, 5000); // Refresh every 5 seconds
+            } else {
+                if (autoRefreshIntervalId) {
+                    clearInterval(autoRefreshIntervalId);
+                    autoRefreshIntervalId = null;
+                }
+            }
+        });
+
+        // Initial load
+        fetchLogs();
+    </script>
+</body>
+</html>
