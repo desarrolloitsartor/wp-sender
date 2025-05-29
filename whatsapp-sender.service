@@ -9,9 +9,8 @@ Group=root # Or a dedicated group
 # Set the working directory to where the app is located
 WorkingDirectory=/opt/whatsapp-sender/
 
-# Command to start the application using xvfb-run
-# app.py is located in /opt/whatsapp-sender/app/app.py
-ExecStart=/usr/bin/xvfb-run -a /usr/bin/python3 app/app.py --host 0.0.0.0 --port 5000
+# Command to start the application using xvfb-run and python from venv
+ExecStart=/usr/bin/xvfb-run -a /opt/whatsapp-sender/venv/bin/python3 app/app.py --host 0.0.0.0 --port 5000
 
 # Restart policy
 Restart=always
