@@ -68,6 +68,7 @@ echo "Virtual environment created."
 
 # 7. Install Python dependencies into the virtual environment
 echo "Installing Python dependencies from requirements.txt into $VENV_DIR..."
+
 if [ -f "$APP_DIR/requirements.txt" ]; then
     sudo "$VENV_DIR/bin/pip" install -r "$APP_DIR/requirements.txt"
 else
