@@ -1,0 +1,26 @@
+[Unit]
+Description=WhatsApp Sender Application
+After=network.target
+
+[Service]
+User=root  # Or a dedicated user if you create one
+Group=root # Or a dedicated group
+
+# Set the working directory to where the app is located
+WorkingDirectory=/opt/whatsapp-sender/
+
+# Command to start the application using xvfb-run
+# app.py is located in /opt/whatsapp-sender/app/app.py
+ExecStart=/usr/bin/xvfb-run -a /usr/bin/python3 app/app.py --host 0.0.0.0 --port 5000
+
+# Restart policy
+Restart=always
+RestartSec=5s
+
+# Standard output and error logging
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=whatsapp-sender
+
+[Install]
+WantedBy=multi-user.target

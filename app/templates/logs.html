@@ -16,6 +16,10 @@
             font-family: monospace;
             max-height: 70vh;
             overflow-y: auto;
+            min-height: 200px; /* Ensure it's visible even when empty */
+        }
+        .actions {
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -38,8 +42,13 @@
                 <h1>Application Logs</h1>
             </header>
             <section>
-                <div class="log-container">
-                    {{ log_content }}
+                <div class="actions">
+                    <button id="refreshLogs">Refresh Logs</button>
+                    <label for="autoRefresh">Auto-refresh every 5s:</label>
+                    <input type="checkbox" id="autoRefreshLogs">
+                </div>
+                <div id="logContainer" class="log-container">
+                    Loading logs...
                 </div>
             </section>
             <footer>
@@ -47,5 +56,45 @@
             </footer>
         </main>
     </div>
+
+    <script>
+        const logContainer = document.getElementById('logContainer');
+        const refreshButton = document.getElementById('refreshLogs');
+        const autoRefreshCheckbox = document.getElementById('autoRefreshLogs');
+        let autoRefreshIntervalId = null;
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch("{{ url_for('get_log_content') }}");
+                if (!response.ok) {
+                    logContainer.textContent = 'Error loading logs: ' + response.statusText;
+                    return;
+                }
+                const logData = await response.text();
+                logContainer.textContent = logData || "Log file is empty or not found.";
+                // Scroll to the bottom of the log container
+                logContainer.scrollTop = logContainer.scrollHeight;
+            } catch (error) {
+                logContainer.textContent = 'Error fetching logs: ' + error;
+            }
+        }
+
+        refreshButton.addEventListener('click', fetchLogs);
+
+        autoRefreshCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                fetchLogs(); // Fetch immediately
+                autoRefreshIntervalId = setInterval(fetchLogs, 5000); // Refresh every 5 seconds
+            } else {
+                if (autoRefreshIntervalId) {
+                    clearInterval(autoRefreshIntervalId);
+                    autoRefreshIntervalId = null;
+                }
+            }
+        });
+
+        // Initial load
+        fetchLogs();
+    </script>
 </body>
 </html>

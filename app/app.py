@@ -15,6 +15,9 @@ import pandas as pd
 import time
 import random
 from urllib.parse import quote
+from collections import deque
+import datetime # For precise time handling if needed, time.time() is often sufficient
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24) # Needed for flash messages
@@ -47,6 +50,10 @@ MESSAGES_BEFORE_PAUSE = 20
 PAUSE_DURATION_SECONDS = 300
 WHATSAPP_WEB_URL = "https://web.whatsapp.com"
 WEBDRIVER_WAIT_TIMEOUT = 20 # For elements to appear
+HOURLY_MESSAGE_LIMIT = 80
+
+# This deque will store timestamps of sent messages to track hourly rate
+message_timestamps = deque()
 
 # Basic Auth Configuration
 BASIC_AUTH_USERNAME = 'admin'
@@ -165,14 +172,20 @@ def upload_file():
 @app.route('/logs_view')
 @requires_auth
 def view_logs():
+    # This route now just serves the page with the JavaScript that will fetch the content
+    return render_template('logs.html')
+
+@app.route('/get_log_content')
+@requires_auth
+def get_log_content():
     try:
         with open(LOG_FILE, 'r') as f:
             log_content = f.read()
+        return Response(log_content, mimetype='text/plain')
     except FileNotFoundError:
-        log_content = "Log file not found."
+        return Response("Log file not found.", mimetype='text/plain', status=404)
     except Exception as e:
-        log_content = f"Error reading log file: {e}"
-    return render_template('logs.html', log_content=log_content)
+        return Response(f"Error reading log file: {e}", mimetype='text/plain', status=500)
 
 # Placeholder for Selenium WebDriver initialization
 def init_driver(session_id="default"):
@@ -271,56 +284,76 @@ def send_messages_route():
     flash(f'Starting to send messages for {uploaded_filename}. Monitor logs for detailed status.', 'info')
     logging.info(f"Starting message sending process for {len(contacts)} contacts from {uploaded_filename}.")
     
-    messages_sent_count = 0
-    messages_failed_count = 0
+    messages_sent_this_session = 0
+    messages_failed_this_session = 0
 
     for i, contact in enumerate(contacts):
+        # Hourly limit check
+        current_time = time.time()
+        # Remove timestamps older than 1 hour (3600 seconds)
+        while message_timestamps and message_timestamps[0] < current_time - 3600:
+            message_timestamps.popleft()
+        
+        if len(message_timestamps) >= HOURLY_MESSAGE_LIMIT:
+            wait_for_slot_duration = (message_timestamps[0] + 3600) - current_time + 1 # +1 for safety
+            logging.info(f"Hourly message limit ({HOURLY_MESSAGE_LIMIT}) reached. Pausing for {wait_for_slot_duration:.2f} seconds.")
+            flash(f"Hourly message limit reached. Pausing for approximately {int(wait_for_slot_duration / 60)} minutes.", "info")
+            time.sleep(wait_for_slot_duration)
+            # After waiting, re-clean the queue
+            current_time = time.time() 
+            while message_timestamps and message_timestamps[0] < current_time - 3600:
+                message_timestamps.popleft()
+
         phone_number = contact.get('PhoneNumber')
         message_text = contact.get('Message')
 
         if not phone_number or not message_text:
             logging.warning(f"Skipping contact due to missing phone number or message: {contact}")
-            messages_failed_count += 1
+            messages_failed_this_session += 1
             continue
 
         logging.info(f"Processing contact {i+1}/{len(contacts)}: {phone_number}")
         
-        wait_time = random.uniform(MIN_WAIT_SECONDS, MAX_WAIT_SECONDS)
-        if messages_sent_count > 0:
-             logging.info(f"Waiting for {wait_time:.2f} seconds before next message...")
-             time.sleep(wait_time)
+        # Smart timer (don't wait before the very first message of the session)
+        if messages_sent_this_session > 0 or (i > 0) : # No wait before the absolute first message
+             # Random delay between messages
+            wait_time = random.uniform(MIN_WAIT_SECONDS, MAX_WAIT_SECONDS)
+            logging.info(f"Waiting for {wait_time:.2f} seconds before next message...")
+            time.sleep(wait_time)
 
-        if messages_sent_count > 0 and messages_sent_count % MESSAGES_BEFORE_PAUSE == 0:
-            logging.info(f"Sent {MESSAGES_BEFORE_PAUSE} messages. Pausing for {PAUSE_DURATION_SECONDS} seconds...")
-            flash(f"Paused for {PAUSE_DURATION_SECONDS} seconds after {messages_sent_count} messages.", "info")
+        # Pause after X messages (this is a short pause, distinct from hourly limit)
+        if messages_sent_this_session > 0 and messages_sent_this_session % MESSAGES_BEFORE_PAUSE == 0:
+            logging.info(f"Sent {MESSAGES_BEFORE_PAUSE} messages (short cycle). Pausing for {PAUSE_DURATION_SECONDS} seconds...")
+            flash(f"Short pause for {PAUSE_DURATION_SECONDS/60} minutes after {messages_sent_this_session} messages in this run.", "info")
             time.sleep(PAUSE_DURATION_SECONDS)
-
+        
         send_status = send_single_whatsapp_message(driver, phone_number, message_text)
 
         if send_status == "QR_SCAN_NEEDED":
             flash("WhatsApp QR Code scan is required. Please scan the QR code, then try sending again.", "warning")
             logging.warning("QR Code scan detected during sending process. Aborting further sends.")
+            # driver.quit() # Or keep alive
             return redirect(url_for('home'))
         elif send_status:
-            messages_sent_count += 1
-            logging.info(f"Message to {phone_number} sent successfully.")
+            messages_sent_this_session += 1
+            message_timestamps.append(time.time()) # Add timestamp for successful send
+            logging.info(f"Message to {phone_number} sent successfully. Total sent in session: {messages_sent_this_session}")
         else:
-            messages_failed_count += 1
-            logging.warning(f"Failed to send message to {phone_number}.")
+            messages_failed_this_session += 1
+            logging.warning(f"Failed to send message to {phone_number}. Total failed in session: {messages_failed_this_session}")
         
-        session['last_send_status'] = f"Processed: {i+1}/{len(contacts)}. Sent: {messages_sent_count}, Failed: {messages_failed_count}."
+        session['last_send_status'] = f"Sent: {messages_sent_this_session}, Failed: {messages_failed_this_session} of {len(contacts)} (in this session)"
 
-    logging.info("Finished sending messages.")
-    flash(f"Finished sending messages for {uploaded_filename}. Sent: {messages_sent_count}, Failed: {messages_failed_count}.", "success" if messages_failed_count == 0 else "warning")
+    logging.info("Finished sending messages for this session.")
+    flash(f"Finished sending messages for {uploaded_filename}. Sent: {messages_sent_this_session}, Failed: {messages_failed_this_session}.", "success" if messages_failed_this_session == 0 else "warning")
     
     if driver:
         driver.quit()
         logging.info("WebDriver session closed.")
     
     session.pop('all_contacts', None)
-    # session.pop('excel_preview', None) # Optional: clear preview or keep it
-    # session.pop('uploaded_filename', None) # Optional: clear filename or keep it
-    session['last_send_status'] = f"Completed. Final Status for {uploaded_filename} - Sent: {messages_sent_count}, Failed: {messages_failed_count}."
+    # Consider if other session variables should be cleared or updated
+    session['last_send_status'] = f"Completed. Final Status for {uploaded_filename} - Sent: {messages_sent_this_session}, Failed: {messages_failed_this_session}."
 
 
     return redirect(url_for('home'))
